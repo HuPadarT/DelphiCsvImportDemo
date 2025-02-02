@@ -12,6 +12,9 @@ object frmMainForm: TfrmMainForm
   Font.Style = []
   OnCreate = FormCreate
   OnDestroy = FormDestroy
+  DesignSize = (
+    847
+    455)
   TextHeight = 15
   object lblLastname: TLabel
     Left = 16
@@ -105,7 +108,8 @@ object frmMainForm: TfrmMainForm
     Left = 0
     Top = 132
     Width = 722
-    Height = 285
+    Height = 298
+    Anchors = [akLeft, akTop, akRight, akBottom]
     ReadOnly = True
     TabOrder = 0
     TitleFont.Charset = DEFAULT_CHARSET
@@ -119,6 +123,7 @@ object frmMainForm: TfrmMainForm
     Top = 216
     Width = 113
     Height = 25
+    Anchors = [akTop, akRight]
     Caption = 'Import data'
     TabOrder = 1
     OnClick = btnLoadFromFileClick
@@ -137,6 +142,7 @@ object frmMainForm: TfrmMainForm
     Top = 361
     Width = 113
     Height = 25
+    Anchors = [akTop, akRight]
     Caption = 'Save data'
     TabOrder = 3
     OnClick = btnSaveClick
@@ -146,6 +152,7 @@ object frmMainForm: TfrmMainForm
     Top = 392
     Width = 113
     Height = 25
+    Anchors = [akTop, akRight]
     Caption = 'Delete person'
     TabOrder = 4
     OnClick = btnDeleteRowClick
@@ -247,8 +254,7 @@ object frmMainForm: TfrmMainForm
       item
         Width = 50
       end>
-    ExplicitLeft = -50
-    ExplicitWidth = 891
+    ExplicitTop = 434
   end
   object DataSource1: TDataSource
     Left = 584

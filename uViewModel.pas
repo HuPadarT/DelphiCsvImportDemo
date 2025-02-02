@@ -3,8 +3,8 @@ unit uViewModel;
 interface
 
 uses
-  System.Classes, System.SysUtils, Datasnap.DBClient, Data.DB, System.Generics.Collections, uPerson,
-  FireDAC.Comp.Client, FireDAC.Stan.Param, FireDAC.Stan.Def, FireDAC.Stan.Async, FireDAC.Stan.Option;
+  System.Classes, System.SysUtils, Datasnap.DBClient, Data.DB, System.Generics.Collections,
+  uPerson, Data.FMTBcd, Data.SqlExpr;
 
 type
   TPersonViewModel = class
@@ -13,7 +13,10 @@ type
     FPersonList: TObjectList<TPerson>;
     FClientDataSet: TClientDataSet;
     FProgressStatus: string;
+    FDBConnection: TSQLConnection;
+    FSQLQuery1: TSQLQuery;
     procedure SyncToClientDataSet;
+    function StringToMd5Hash(const ADataString: string): string;
   public
     constructor Create;
     destructor Destroy; override;
@@ -29,7 +32,7 @@ type
   end;
 implementation
 
-uses uEnums, System.Rtti, System.TypInfo;
+uses uEnums, System.Rtti, System.TypInfo, System.Hash, uFireBirdProvider;
 
 { TPersonViewModel }
 
@@ -59,26 +62,46 @@ begin
   begin
     Add('Vezeteknev', ftString, 50);
     Add('Keresztnev', ftString, 50);
-    Add('SzemelyiAzon', ftString, 20);
-    Add('LakcimAzon', ftString, 20);
-    Add('CimTipus', ftString, 20);
+    Add('SzemelyiAzon', ftString, 15);
+    Add('LakcimAzon', ftString, 15);
+    Add('CimTipus', ftString, 15);
     Add('IranyitoSzam', ftString, 10);
     Add('Telepules', ftString, 50);
-    Add('Utca', ftString, 50);
-    Add('Hazszam', ftString, 10);
-    Add('ElerhetosegTipus', ftString, 20);
+    Add('Utca', ftString, 250);
+    Add('Hazszam', ftString, 20);
+    Add('ElerhetosegTipus', ftString, 15);
     Add('Elerhetoseg', ftString, 50);
-    Add('Modified', ftBoolean);
   end;
   FClientDataSet.CreateDataSet;
+
+  end;
+
+function TPersonViewModel.StringToMd5Hash(const ADataString: string): string;
+begin
+  Result := THashMD5.GetHashString(ADataString);
 end;
 
 procedure TPersonViewModel.DeletePerson(const AItemId: string);
+var hsh, s, prsHsh: string;
 begin
+  hsh := StringToMd5Hash(AItemId);
   for var I := 0 to FPersonList.Count - 1 do
   begin;
-    if FPersonList[I].PersonIdentifier = AItemId then
+    s := FPersonList[I].LastName + ';' +
+      FPersonList[I].FirstName + ';' +
+      FPersonList[I].PersonIdentifier + ';' +
+      FPersonList[I].AddressId + ';' +
+      FPersonList[I].AddressType + ';' +
+      FPersonList[I].Postcode + ';' +
+      FPersonList[I].City + ';' +
+      FPersonList[I].Street + ';' +
+      FPersonList[I].HouseNumber + ';' +
+      FPersonList[I].ContactType + ';' +
+      FPersonList[I].Contact;
+    prsHsh := StringToMd5Hash(s);
+    if prsHsh = hsh then
     begin;
+      FProgressStatus := FPersonList[I].LastName + ' ' + FPersonList[I].FirstName + ' (' + FPersonList[I].PersonIdentifier + ') törlése megtörtént.';
       if FPersonList.Count = 1 then
       begin
         FPersonList.Clear;
@@ -88,13 +111,7 @@ begin
       Break;
     end;
   end;
-end;
-
-destructor TPersonViewModel.Destroy;
-begin
-  FClientDataSet.Free;
-  FPersonList.Free;
-  inherited;
+  SyncToClientDataSet;
 end;
 
 procedure TPersonViewModel.LoadFromCSV(const AFileName: string; const AFieldSeparator: char);
@@ -103,52 +120,71 @@ var Person: TPerson;
     Lines: TArray<string>;
     Line: string;
     Parts: TStringList;
+    Headers: TDictionary<string, Integer>;
 begin
   FileContent := TStringList.Create;
   try
-    Parts := TStringList.Create();
+    Headers := TDictionary<string, Integer>.Create;
     try
-      FileContent.LoadFromFile(AFileName, TEncoding.UTF8);
-      Lines := FileContent.Text.Split([sLineBreak], TStringSplitOptions.ExcludeEmpty);
+      Parts := TStringList.Create();
+      try
+        FileContent.LoadFromFile(AFileName, TEncoding.UTF8);
+        Lines := FileContent.Text.Split([sLineBreak], TStringSplitOptions.ExcludeEmpty);
 
-      if Length(Lines) < 2 then // van legalább 2 sora (fejléc és 1 rekord)
-      begin
-        FProgressStatus := 'A fájl túl kevés sort tartalmaz.';
-        Exit;
-      end;
-
-      Line := Lines[0]; // fejléc
-      Parts.Delimiter := AFieldSeparator;
-      Parts.StrictDelimiter := true;
-      Parts.DelimitedText := Line;
-      if Parts.Count < 11 then // meg van minden mezõ?
-      begin
-        FProgressStatus := 'Nincs elég mezõ.';
-        Exit;
-      end;
-
-      for var i := 1 to High(Lines) do
-      begin
-        Line := Lines[i];
-        Parts.DelimitedText := Line;
-
-        if Parts.Count > 10 then  // Ellenõrizzük, hogy van-e elég oszlop
+        if Length(Lines) < 2 then // van legalább 2 sora (fejléc és 1 rekord)
         begin
-          try
-            Person := TPerson.Create();
-            Person.Inicialize(Parts[0], Parts[1], Parts[2], Parts[3], Parts[4], Parts[5], Parts[6],
-              Parts[7], Parts[8], Parts[9], Parts[10]);
-            FPersonList.Add(Person.Clone);
-          except
-            on E: Exception do
-              FProgressStatus := 'Hiba a sor feldolgozása közben: ' + E.Message;
+          FProgressStatus := 'A fájl túl kevés sort tartalmaz.';
+          Exit;
+        end;
+
+        Line := Lines[0]; // fejléc
+        Parts.Delimiter := AFieldSeparator;
+        Parts.StrictDelimiter := true;
+        Parts.DelimitedText := Line;
+        if Parts.Count < 11 then // meg van minden mezõ?
+        begin
+          FProgressStatus := 'Nincs elég mezõ.';
+          Exit;
+        end;
+        for var i := 0 to Parts.Count-1 do
+          Headers.Add(Trim(Parts[i]), i); // Mezõnév -> Index párok
+
+        for var i := 1 to High(Lines) do
+        begin
+          Line := Lines[i];
+          if Line = '' then Continue;
+          Parts.DelimitedText := Line;
+
+          if Parts.Count >= Headers.Count then  // Ellenõrizzük, hogy van-e elég oszlop
+          begin
+            try
+              Person := TPerson.Create();
+              Person.Inicialize(
+                Parts[Headers['Vezeteknev']],
+                Parts[Headers['Keresztnev']],
+                Parts[Headers['SzemelyiAzon']],
+                Parts[Headers['LakcimAzon']],
+                Parts[Headers['CimTipus']],
+                Parts[Headers['IranyitoSzam']],
+                Parts[Headers['Telepules']],
+                Parts[Headers['Utca']],
+                Parts[Headers['Hazszam']],
+                Parts[Headers['ElerhetosegTipus']],
+                Parts[Headers['Elerhetoseg']]);
+              FPersonList.Add(Person.Clone);
+            except
+              on E: Exception do
+                FProgressStatus := 'Hiba a sor feldolgozása közben: ' + E.Message;
+            end;
           end;
         end;
+        SyncToClientDataSet;
+        FProgressStatus := 'Betöltés kész.';
+      finally
+        Parts.Free;
       end;
-      SyncToClientDataSet;
-      FProgressStatus := 'Betöltés kész.';
     finally
-      Parts.Free;
+      Headers.Free;
     end;
   finally
     FileContent.Free;
@@ -173,8 +209,7 @@ begin
 end;
 
 procedure TPersonViewModel.SyncToClientDataSet;
-var
-  Person: TPerson;
+var Person: TPerson;
 begin
   if FPersonList.Count < 1 then
     Exit;
@@ -195,12 +230,18 @@ begin
       FClientDataSet.FieldByName('Hazszam').AsString := Person.HouseNumber;
       FClientDataSet.FieldByName('ElerhetosegTipus').AsString := Person.ContactType;
       FClientDataSet.FieldByName('Elerhetoseg').AsString := Person.Contact;
-      FClientDataSet.FieldByName('Modified').AsBoolean := Person.Modified;
       FClientDataSet.Post;
     end;
   finally
     FClientDataSet.EnableControls;
   end;
+end;
+
+destructor TPersonViewModel.Destroy;
+begin
+  FClientDataSet.Free;
+  FPersonList.Free;
+  inherited;
 end;
 
 end.

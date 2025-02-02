@@ -50,6 +50,7 @@ type
     FViewModel: TPersonViewModel;
   public
     { Public declarations }
+    procedure ClearAllField;
   end;
 
 var
@@ -63,8 +64,20 @@ uses uEnums;
 procedure TfrmMainForm.btnDeleteRowClick(Sender: TObject);
 var s: string;
 begin
-  s := DBGrid1.DataSource.DataSet.FieldByName('SzemelyiAzon').AsString;
+  s := DBGrid1.DataSource.DataSet.FieldByName('Vezeteknev').AsString + ';' +
+        DBGrid1.DataSource.DataSet.FieldByName('Keresztnev').AsString + ';' +
+        DBGrid1.DataSource.DataSet.FieldByName('SzemelyiAzon').AsString + ';' +
+        DBGrid1.DataSource.DataSet.FieldByName('LakcimAzon').AsString + ';' +
+        DBGrid1.DataSource.DataSet.FieldByName('CimTipus').AsString + ';' +
+        DBGrid1.DataSource.DataSet.FieldByName('IranyitoSzam').AsString + ';' +
+        DBGrid1.DataSource.DataSet.FieldByName('Telepules').AsString + ';' +
+        DBGrid1.DataSource.DataSet.FieldByName('Utca').AsString + ';' +
+        DBGrid1.DataSource.DataSet.FieldByName('Hazszam').AsString + ';' +
+        DBGrid1.DataSource.DataSet.FieldByName('ElerhetosegTipus').AsString + ';' +
+        DBGrid1.DataSource.DataSet.FieldByName('Elerhetoseg').AsString;
   FViewModel.DeletePerson(s);
+  StatusBar1.Panels[0].Text := FViewModel.StatusMessage;
+  ClearAllField;
 end;
 
 procedure TfrmMainForm.btnInsertRowClick(Sender: TObject);
@@ -81,9 +94,9 @@ begin
   begin
     FViewModel.AddPerson(edtLastname.Text, edtFirstname.Text, edtPersonId.Text, edtAdrCardId.Text, cmbAdrType.Items[cmbAdrType.ItemIndex],
       edtPostcode.Text, edtCity.Text, edtStreer.Text, edtHouseNo.Text, cmbContackType.Items[cmbContackType.ItemIndex], edtContact.Text);
+    ClearAllField;
     StatusBar1.Panels[0].Text := FViewModel.StatusMessage;
   end;
-
 end;
 
 procedure TfrmMainForm.btnLoadFromFileClick(Sender: TObject);
@@ -100,12 +113,28 @@ begin
       ShowMessage('A fájl nem létezik!');
     end;
   end;
+  ClearAllField;
 end;
 
 procedure TfrmMainForm.btnSaveClick(Sender: TObject);
 begin
   FViewModel.SaveToDB;
   StatusBar1.Panels[0].Text := FViewModel.StatusMessage;
+end;
+
+procedure TfrmMainForm.ClearAllField;
+begin
+  edtLastname.Text := '';
+  edtFirstname.Text := '';
+  edtPersonId.Text := '';
+  edtAdrCardId.Text := '';
+  cmbAdrType.ItemIndex := -1;
+  edtPostcode.Text := '';
+  edtCity.Text := '';
+  edtStreer.Text := '';
+  edtHouseNo.Text := '';
+  cmbContackType.ItemIndex := -1;
+  edtContact.Text := '';
 end;
 
 procedure TfrmMainForm.FormCreate(Sender: TObject);

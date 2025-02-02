@@ -129,6 +129,8 @@
         <DCCReference Include="uViewModel.pas"/>
         <DCCReference Include="uEnums.pas"/>
         <DCCReference Include="uPerson.pas"/>
+        <DCCReference Include="uCustomDBProvider.pas"/>
+        <DCCReference Include="uFireBirdProvider.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

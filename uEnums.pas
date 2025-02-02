@@ -2,8 +2,6 @@ unit uEnums;
 
 interface
 
-uses system.Classes;
-
 type
   TAddressTypeEnum =
   (

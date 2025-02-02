@@ -7,6 +7,7 @@ uses System.TypInfo, uEnums;
 type
   TPerson = class
   strict private
+    FDBPrimaryKey: Int64;
     FPersonIdentifier: string;
     FLastName: string;
     FFisrtName: string;
@@ -40,12 +41,13 @@ type
     function StrToAddressTypeEnum(const AValue: string): Boolean;
     function StrToContactTypeEnum(const AValue: string): Boolean;
     function Clone: TPerson;
+    function ToString: string; // csv-be mentéshez
     procedure Assign(const AItem: TPerson);
     procedure Clear;
     procedure Inicialize(AVezeteknev, AKeresztnev, ASzemelyiAzon, ALakcimAzon, ACimTipus,
       AIranyitoSzam, ATelepules, AUtca, AHazszam, AElerhetosegTipus, AElerhetoseg: string);
 
-    constructor Create(); Overload;
+    constructor Create; Reintroduce;
   end;
 
 implementation
@@ -143,6 +145,21 @@ var EnumValue: Integer;
 begin
   EnumValue := GetEnumValue(TypeInfo(TContactTypeEnum), AValue);
   Result := EnumValue <> -1;
+end;
+
+function TPerson.ToString: string;
+begin
+  Result := Self.FLastName + ';' +
+  Self.FirstName + ';' +
+  Self.FPersonIdentifier + ';' +
+  Self.FAddressCardId + ';' +
+  Self.FAddressType + ';' +
+  Self.FPostcode + ';' +
+  Self.FCity + ';' +
+  Self.FStreet + ';' +
+  Self.FHouseNumber + ';' +
+  Self.FContactType + ';' +
+  Self.FContact + ';';
 end;
 
 procedure TPerson.SetContactType(const AInItem: String);
